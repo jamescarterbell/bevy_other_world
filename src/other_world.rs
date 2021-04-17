@@ -23,7 +23,7 @@ impl<const N: usize> DerefMut for OtherWorld<N>{
 }
 
 impl<const N: usize> OtherWorld<N>{
-    fn new() -> Self{
+    pub(crate) fn new() -> Self{
         Self{
             world: World::default()
         }

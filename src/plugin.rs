@@ -3,7 +3,7 @@ use bevy::app::Plugin;
 use bevy::ecs::prelude::*;
 use crate::other_world::OtherWorld;
 use crate::other_query::OtherQuery;
-use crate::other_commands::OtherCommands;
+//use crate::other_commands::OtherCommands;
 
 struct OtherWorldPlugin<const N: usize>{
     sync_stage: Option<Box<dyn StageSystemAdder>>,
@@ -39,7 +39,7 @@ impl<T: StageLabel + Clone, const N: usize> StageSystemAdder for SyncSystemAdder
 
 struct Nonsynced;
 
-fn sync_other_world<const N: usize>(commands: &mut Commands, other_commands: &mut OtherCommands, nonsynced: OtherQuery<(), (), N>){
+fn sync_other_world<const N: usize>(nonsynced: OtherQuery<(), (), N>){
     // First, despawn any sync entities in the outer world that don't exist in the inner world.
     // Then, spawn new sync entities for the Nonsynced entities in the inner world. (Remove Nonsynced Components as you go)
     // The Nonsynced components will never be seen by a rollback library as long as it does serializes the world, then runs it's schedule

@@ -3,7 +3,7 @@ use bevy::ecs::query::QueryState;
 use bevy::ecs::query::FilterFetch;
 use bevy::ecs::system::Query;
 use bevy::ecs::system::SystemParam;
-use crate::other_world_query::{OtherFetch, OtherWorldQuery};
+use crate::other_world_query::{OtherWorldQuery};
 
 /// Provides scoped access to an OtherWorld according to a given WorldQuery and query filter
 pub struct OtherQuery<'w, Q, F, const N: usize>
