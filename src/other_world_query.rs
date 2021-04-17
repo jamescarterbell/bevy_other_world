@@ -21,29 +21,33 @@ use bevy::ecs::query::FetchState;
 use bevy::ecs::query::Fetch;
 use bevy::ecs::query::WorldQuery;
 
-pub trait OtherWorldQuery<const N: usize>{
-    type Fetch: WorldQuery;
+pub struct Other<T, const N: usize>{
+    data: PhantomData<T>,
 }
 
-impl<const N: usize> OtherWorldQuery<N> for (){
-    type Fetch = OtherFetch<(), N>;
-}
-
-pub struct OtherFetch<T, const N: usize>{
-    p: std::marker::PhantomData<T>
-}
-
-unsafe impl<T, const N: usize> Send for OtherFetch<T, N>{}
-unsafe impl<T, const N: usize> Sync for OtherFetch<T, N>{}
-
-impl<const N: usize> WorldQuery for OtherFetch<(), N>{
+impl<const N: usize> WorldQuery for Other<(), N>{
     type Fetch = ();
     type State = ();
 }
 
-impl<T: Component, const N: usize> WorldQuery for OtherFetch<&T, N>{
+trait Otherable<const N: usize>{
+    type Fetch: for<'a> Fetch<'a, State = Self::State>;
+    type State: FetchState;
+}
+
+impl<T: Component, const N: usize> Otherable<N> for &T{
     type Fetch = OtherReadFetch<T, N>;
     type State = OtherReadState<T, N>;
+}
+
+impl<T1: Otherable<N>, T2: Otherable<N>, const N: usize> Otherable<N> for (T1, T2){
+    type Fetch = (T1::Fetch, T2::Fetch);
+    type State = (T1::State, T2::State);
+}
+
+impl<T: Otherable<N>, const N: usize> WorldQuery for Other<T, N>{
+    type Fetch = <T as Otherable<N>>::Fetch;
+    type State = <T as Otherable<N>>::State;
 }
 
 pub struct OtherReadFetch<T, const N: usize>{
@@ -152,10 +156,12 @@ pub struct OtherReadState<T, const N: usize>{
 unsafe impl<T: Component, const N: usize> FetchState for OtherReadState<T, N>{
     fn init(world: &mut World) -> Self {
         let component_info = world.components_mut().get_or_insert_info::<Other<T, N>>();
-        let other_component_info = world
-            .get_resource::<OtherWorld<N>>()
+        let other_world = world
+            .get_resource_mut::<OtherWorld<N>>();
+        let other_component = other_world
             .expect(&format!("You don't have an Otherworld<{}> in your resources!", N))
-            .components_mut().get_or_insert_info::<T>();
+            .components_mut()
+            .get_or_insert_info::<T>();
         Self {
             component_id: component_info.id(),
             storage_type: component_info.storage_type(),
@@ -188,8 +194,4 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherReadState<T, N>{
     fn matches_table(&self, table: &Table) -> bool {
         table.has_column(self.component_id)
     }
-}
-
-pub struct Other<T: Component, const N: usize>{
-    data: std::marker::PhantomData<T>,
 }
