@@ -185,7 +185,7 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherReadState<T, N>{
                 let other_world = world
                     .get_resource::<OtherWorld<N>>()
                     .unwrap();
-                let id = other_world.components().get_id(TypeId::of::<Other<T, N>>()).unwrap();
+                let id = other_world.components().get_id(TypeId::of::<T>()).unwrap();
                 (unsafe{other_world.components().get_info_unchecked(id)}, world.components().get_resource_id(TypeId::of::<OtherWorld<N>>()).unwrap())
             };
 
@@ -269,7 +269,7 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherWriteState<T, N> {
                 let other_world = world
                     .get_resource::<OtherWorld<N>>()
                     .unwrap();
-                let id = other_world.components().get_id(TypeId::of::<Other<T, N>>()).unwrap();
+                let id = other_world.components().get_id(TypeId::of::<T>()).unwrap();
                 (unsafe{other_world.components().get_info_unchecked(id)}, world.components().get_resource_id(TypeId::of::<OtherWorld<N>>()).unwrap())
             };
 
