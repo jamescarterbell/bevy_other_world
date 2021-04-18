@@ -1,3 +1,4 @@
+use core::any::TypeId;
 use bevy::ecs::storage::Tables;
 use bevy::ecs::storage::ComponentSparseSet;
 use bevy::ecs::entity::Entity;
@@ -25,12 +26,12 @@ pub struct Other<T, const N: usize>{
     data: PhantomData<T>,
 }
 
-impl<const N: usize> WorldQuery for Other<(), N>{
+impl<const N: usize> Otherable<N> for (){
     type Fetch = ();
     type State = ();
 }
 
-trait Otherable<const N: usize>{
+pub trait Otherable<const N: usize>{
     type Fetch: for<'a> Fetch<'a, State = Self::State>;
     type State: FetchState;
 }
@@ -155,13 +156,29 @@ pub struct OtherReadState<T, const N: usize>{
 
 unsafe impl<T: Component, const N: usize> FetchState for OtherReadState<T, N>{
     fn init(world: &mut World) -> Self {
-        let component_info = world.components_mut().get_or_insert_info::<Other<T, N>>();
-        let other_world = world
-            .get_resource_mut::<OtherWorld<N>>();
-        let other_component = other_world
+        world
+            .get_resource_mut::<OtherWorld<N>>()
             .expect(&format!("You don't have an Otherworld<{}> in your resources!", N))
             .components_mut()
             .get_or_insert_info::<T>();
+            
+        world
+            .components_mut()
+            .get_or_insert_info::<Other<T, N>>();
+
+        let component_info = {
+                let id = world.components().get_id(TypeId::of::<Other<T, N>>()).unwrap();
+                unsafe{world.components().get_info_unchecked(id)}
+            };
+
+        let other_component_info = {
+                let other_world = world
+                    .get_resource::<OtherWorld<N>>()
+                    .unwrap();
+                let id = other_world.components().get_id(TypeId::of::<Other<T, N>>()).unwrap();
+                unsafe{other_world.components().get_info_unchecked(id)}
+            };
+
         Self {
             component_id: component_info.id(),
             storage_type: component_info.storage_type(),
