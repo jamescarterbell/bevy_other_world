@@ -30,34 +30,34 @@ pub struct Other<T, const N: usize>{
     data: PhantomData<T>,
 }
 
-pub trait Otherable<const N: usize>{
+pub trait OtherWorldQuery<const N: usize>{
     type Fetch: for<'a> Fetch<'a, State = Self::State>;
     type State: FetchState;
 }
 
-impl<const N: usize> Otherable<N> for (){
+impl<const N: usize> OtherWorldQuery<N> for (){
     type Fetch = ();
     type State = ();
 }
 
-impl<T: Component, const N: usize> Otherable<N> for &T{
+impl<T: Component, const N: usize> OtherWorldQuery<N> for &T{
     type Fetch = OtherReadFetch<T, N>;
     type State = OtherReadState<T, N>;
 }
 
-impl<T: Component, const N: usize> Otherable<N> for &mut T{
+impl<T: Component, const N: usize> OtherWorldQuery<N> for &mut T{
     type Fetch = OtherWriteFetch<T, N>;
     type State = OtherWriteState<T, N>;
 }
 
-impl<T1: Otherable<N>, T2: Otherable<N>, const N: usize> Otherable<N> for (T1, T2){
+impl<T1: OtherWorldQuery<N>, T2: OtherWorldQuery<N>, const N: usize> OtherWorldQuery<N> for (T1, T2){
     type Fetch = (T1::Fetch, T2::Fetch);
     type State = (T1::State, T2::State);
 }
 
-impl<T: Otherable<N>, const N: usize> WorldQuery for Other<T, N>{
-    type Fetch = <T as Otherable<N>>::Fetch;
-    type State = <T as Otherable<N>>::State;
+impl<T: OtherWorldQuery<N>, const N: usize> WorldQuery for Other<T, N>{
+    type Fetch = <T as OtherWorldQuery<N>>::Fetch;
+    type State = <T as OtherWorldQuery<N>>::State;
 }
 
 pub struct OtherReadFetch<T, const N: usize>{
