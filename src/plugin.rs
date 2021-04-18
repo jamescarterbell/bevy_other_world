@@ -6,9 +6,24 @@ use crate::other_world::OtherWorld;
 //use crate::other_world_query::{Other};
 //use crate::other_commands::OtherCommands;
 
-struct OtherWorldPlugin<const N: usize>{
+pub struct OtherWorldPlugin<const N: usize>{
     sync_stage: Option<Box<dyn StageSystemAdder>>,
     
+}
+
+impl<const N: usize> OtherWorldPlugin<N>{
+    pub fn new() -> Self{
+        Self{
+            sync_stage: None,
+        }
+    }
+
+    pub fn with_sync<T: StageLabel + Clone>(&mut self, stage: T) -> &mut Self{
+        self.sync_stage = Some(Box::new(SyncSystemAdder::<T, N>{
+            stage
+        }));
+        self
+    }
 }
 
 impl<const N: usize> Plugin for OtherWorldPlugin<N>{
