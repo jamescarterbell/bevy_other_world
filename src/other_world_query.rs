@@ -1,3 +1,5 @@
+use core::ops::DerefMut;
+use core::ops::Deref;
 use bevy::ecs::world::Mut;
 use bevy::ecs::component::ComponentTicks;
 use core::any::TypeId;
@@ -154,6 +156,7 @@ impl<'w, T: Component, const N: usize> Fetch<'w> for OtherReadFetch<T, N>{
 unsafe impl<T: Component, const N: usize> ReadOnlyFetch for OtherReadFetch<T, N>{}
 
 pub struct OtherReadState<T, const N: usize>{
+    world_id: ComponentId,
     component_id: ComponentId,
     storage_type: StorageType,
     other_component_id: ComponentId,
@@ -178,15 +181,16 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherReadState<T, N>{
                 unsafe{world.components().get_info_unchecked(id)}
             };
 
-        let other_component_info = {
+        let (other_component_info, world_id) = {
                 let other_world = world
                     .get_resource::<OtherWorld<N>>()
                     .unwrap();
                 let id = other_world.components().get_id(TypeId::of::<Other<T, N>>()).unwrap();
-                unsafe{other_world.components().get_info_unchecked(id)}
+                (unsafe{other_world.components().get_info_unchecked(id)}, world.components().get_resource_id(TypeId::of::<OtherWorld<N>>()).unwrap())
             };
 
         Self {
+            world_id,
             component_id: component_info.id(),
             storage_type: component_info.storage_type(),
             other_component_id: other_component_info.id(),
@@ -196,6 +200,10 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherReadState<T, N>{
     }
 
     fn update_component_access(&self, access: &mut FilteredAccess<ComponentId>) {
+        if access.access().has_write(self.world_id) || access.access().has_read(self.world_id){
+            panic!("You cannot query OtherWorld<{}> while also accessing it as a Res or ResMut!",
+                N);
+        }
         access.add_read(self.component_id)
     }
 
@@ -232,6 +240,7 @@ pub struct OtherWriteFetch<T, const N: usize> {
 }
 
 pub struct OtherWriteState<T, const N: usize> {
+    world_id: ComponentId,
     component_id: ComponentId,
     storage_type: StorageType,
     other_component_id: ComponentId,
@@ -256,15 +265,16 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherWriteState<T, N> {
                 unsafe{world.components().get_info_unchecked(id)}
             };
 
-        let other_component_info = {
+        let (other_component_info, world_id) = {
                 let other_world = world
                     .get_resource::<OtherWorld<N>>()
                     .unwrap();
                 let id = other_world.components().get_id(TypeId::of::<Other<T, N>>()).unwrap();
-                unsafe{other_world.components().get_info_unchecked(id)}
+                (unsafe{other_world.components().get_info_unchecked(id)}, world.components().get_resource_id(TypeId::of::<OtherWorld<N>>()).unwrap())
             };
 
         OtherWriteState {
+            world_id,
             component_id: component_info.id(),
             storage_type: component_info.storage_type(),
             other_component_id: other_component_info.id(),
@@ -274,6 +284,10 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherWriteState<T, N> {
     }
 
     fn update_component_access(&self, access: &mut FilteredAccess<ComponentId>) {
+        if access.access().has_write(self.world_id) || access.access().has_read(self.world_id){
+            panic!("You cannot query OtherWorld<{}> while also accessing it as a Res or ResMut!",
+                N);
+        }
         if access.access().has_read(self.component_id) {
             panic!("&mut {} conflicts with a previous access in this query. Mutable component access must be unique.",
                 std::any::type_name::<T>());
@@ -303,7 +317,7 @@ unsafe impl<T: Component, const N: usize> FetchState for OtherWriteState<T, N> {
 }
 
 impl<'w, T: Component, const N: usize> Fetch<'w> for OtherWriteFetch<T, N> {
-    type Item = Mut<'w, T>;
+    type Item = OtherMut<'w, T>;
     type State = OtherWriteState<T, N>;
 
     #[inline]
@@ -374,7 +388,7 @@ impl<'w, T: Component, const N: usize> Fetch<'w> for OtherWriteFetch<T, N> {
         match self.storage_type {
             StorageType::Table => {
                 let table_row = *self.entity_table_rows.add(archetype_index);
-                Mut {
+                OtherMut {
                     value: &mut *self.table_components.as_ptr().add(table_row),
                     component_ticks: &mut *self.table_ticks.add(table_row),
                     change_tick: self.change_tick,
@@ -385,7 +399,7 @@ impl<'w, T: Component, const N: usize> Fetch<'w> for OtherWriteFetch<T, N> {
                 let entity = *self.entities.add(archetype_index);
                 let (component, component_ticks) =
                     (*self.sparse_set).get_with_ticks(entity).unwrap();
-                Mut {
+                OtherMut {
                     value: &mut *component.cast::<T>(),
                     component_ticks: &mut *component_ticks,
                     change_tick: self.change_tick,
@@ -397,11 +411,57 @@ impl<'w, T: Component, const N: usize> Fetch<'w> for OtherWriteFetch<T, N> {
 
     #[inline]
     unsafe fn table_fetch(&mut self, table_row: usize) -> Self::Item {
-        Mut {
+        OtherMut {
             value: &mut *self.table_components.as_ptr().add(table_row),
             component_ticks: &mut *self.table_ticks.add(table_row),
             change_tick: self.change_tick,
             last_change_tick: self.last_change_tick,
         }
+    }
+}
+
+pub struct OtherMut<'a, T> {
+    pub(crate) value: &'a mut T,
+    pub(crate) component_ticks: &'a mut ComponentTicks,
+    pub(crate) last_change_tick: u32,
+    pub(crate) change_tick: u32,
+}
+
+impl<'a, T> Deref for OtherMut<'a, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &T {
+        self.value
+    }
+}
+
+impl<'a, T> DerefMut for OtherMut<'a, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        self.component_ticks.set_changed(self.change_tick);
+        self.value
+    }
+}
+
+impl<'a, T: core::fmt::Debug> core::fmt::Debug for OtherMut<'a, T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl<'w, T> OtherMut<'w, T> {
+    /// Returns true if (and only if) this component been added since the last execution of this
+    /// system.
+    pub fn is_added(&self) -> bool {
+        self.component_ticks
+            .is_added(self.last_change_tick, self.change_tick)
+    }
+
+    /// Returns true if (and only if) this component been changed
+    /// since the last execution of this system.
+    pub fn is_changed(&self) -> bool {
+        self.component_ticks
+            .is_changed(self.last_change_tick, self.change_tick)
     }
 }
