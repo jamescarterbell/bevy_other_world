@@ -1,6 +1,6 @@
 [package]
 name = "bevy_other_world"
-version = "0.1.2-alpha"
+version = "0.1.3-alpha"
 authors = ["James Bell <jamescarterbell@gmail.com>"]
 edition = "2018"
 description = "Experimental subworlds plugin for Bevy"
