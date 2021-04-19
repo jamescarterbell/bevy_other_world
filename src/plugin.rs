@@ -53,12 +53,12 @@ impl<T: StageLabel + Clone, const N: usize> StageSystemAdder for SyncSystemAdder
     }
 }
 
-struct Synced;
-struct OtherSynced<const N: usize>{
+pub struct Synced;
+pub struct OtherSynced<const N: usize>{
     other: Entity,
 }
 
-fn sync_other_world<const N: usize>(mut commands: Commands, synced: Query<(&Entity, &OtherSynced<N>)>, mut other_world: ResMut<OtherWorld<N>>){
+pub fn sync_other_world<const N: usize>(mut commands: Commands, synced: Query<(&Entity, &OtherSynced<N>)>, mut other_world: ResMut<OtherWorld<N>>){
     // First, despawn any sync entities in the outer world that don't exist in the inner world.
     // TODO: Make this also check if the entity has changed (perhaps the inner world has been swapped in the other_world)
     synced
