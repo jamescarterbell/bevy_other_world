@@ -9,5 +9,5 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.5.0"
+bevy = {path = "../bevy"}
 fixedbitset = "0.4"
