@@ -27,6 +27,8 @@ use bevy::ecs::query::FetchState;
 
 use crate::other_query_iter::OtherQueryIter;
 use crate::other_query::OtherQuery;
+use crate::other::Other;
+use crate::other::Otherable;
 
 pub struct OtherQueryState<W, Q: WorldQuery, F: WorldQuery = ()>
 where
@@ -38,6 +40,7 @@ where
     pub(crate) matched_archetypes: FixedBitSet,
     pub(crate) archetype_component_access: Access<ArchetypeComponentId>,
     pub(crate) component_access: FilteredAccess<ComponentId>,
+    pub(crate) outer_component_access: FilteredAccess<ComponentId>,
     // NOTE: we maintain both a TableId bitset and a vec because iterating the vec is faster
     pub(crate) matched_table_ids: Vec<TableId>,
     // NOTE: we maintain both a ArchetypeId bitset and a vec because iterating the vec is faster
@@ -78,18 +81,15 @@ where
         let state = OtherQueryState::new(world);
         assert_component_access_compatibility(
             &system_state.name,
-            std::any::type_name::<Q>(),
-            std::any::type_name::<F>(),
+            std::any::type_name::<Other<W, Q>>(),
+            std::any::type_name::<Other<W, F>>(),
             &system_state.component_access_set,
             &state.component_access,
             world,
         );
         system_state
             .component_access_set
-            .add(state.component_access.clone());
-        system_state
-            .archetype_component_access
-            .extend(&state.archetype_component_access);
+            .add(state.outer_component_access.clone());
         state
     }
 
@@ -130,11 +130,17 @@ where
     F::Fetch: FilterFetch,
 {
     pub fn new(world: &mut World) -> Self {
-        let fetch_state = <Q::State as FetchState>::init(world);
-        let filter_state = <F::State as FetchState>::init(world);
+        let mut world = unsafe{ world.get_resource_unchecked_mut::<W>().expect("Couldn't access world!") };
+        let fetch_state = <Q::State as FetchState>::init(&mut world);
+        let filter_state = <F::State as FetchState>::init(&mut world);
+        let outer_fetch_state = <Q::State as FetchState>::init(&mut world);
+        let outer_filter_state = <F::State as FetchState>::init(&mut world);
         let mut component_access = Default::default();
+        let mut outer_component_access = Default::default();
         fetch_state.update_component_access(&mut component_access);
         filter_state.update_component_access(&mut component_access);
+        outer_fetch_state.update_component_access(&mut outer_component_access);
+        outer_filter_state.update_component_access(&mut outer_component_access);
         let mut state = Self {
             world_id: world.id(),
             archetype_generation: ArchetypeGeneration::new(usize::MAX),
@@ -143,6 +149,7 @@ where
             fetch_state,
             filter_state,
             component_access,
+            outer_component_access,
             matched_tables: Default::default(),
             matched_archetypes: Default::default(),
             archetype_component_access: Default::default(),
