@@ -30,7 +30,7 @@ use crate::other_query::OtherQuery;
 use crate::other::Other;
 use crate::other::Otherable;
 
-pub struct OtherQueryState<W, Q: WorldQuery, F: WorldQuery = ()>
+pub struct OtherQueryState<W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W>, F: WorldQuery = ()>
 where
     F::Fetch: FilterFetch,
 {
@@ -50,7 +50,7 @@ where
     w: std::marker::PhantomData<W>
 }
 
-impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + 'static, F: WorldQuery + 'static> SystemParamFetch<'w> for OtherQueryState<W, Q, F>
+impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W> + 'static, F: WorldQuery + 'static> SystemParamFetch<'w> for OtherQueryState<W, Q, F>
 where
     F::Fetch: FilterFetch,{
 
@@ -70,7 +70,7 @@ where
     }
 }
 
-unsafe impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + 'static, F: WorldQuery + 'static> SystemParamState for OtherQueryState<W, Q, F>
+unsafe impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W> + 'static, F: WorldQuery + 'static> SystemParamState for OtherQueryState<W, Q, F>
 where
     F::Fetch: FilterFetch,{
 
@@ -94,10 +94,7 @@ where
     }
 
     fn new_archetype(&mut self, archetype: &Archetype, system_state: &mut SystemState) {
-        self.new_archetype(archetype);
-        system_state
-            .archetype_component_access
-            .extend(&self.archetype_component_access);
+        // THIS MAY NEED AN IMPL IN THE FUTURE
     }
 
     fn default_config() {}
@@ -125,7 +122,7 @@ fn assert_component_access_compatibility(
                 query_type, filter_type, system_name, accesses);
 }
 
-impl<W: DerefMut<Target = World> + Component, Q: WorldQuery, F: WorldQuery> OtherQueryState<W, Q, F>
+impl<W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W>, F: WorldQuery> OtherQueryState<W, Q, F>
 where
     F::Fetch: FilterFetch,
 {
@@ -133,14 +130,17 @@ where
         let mut world = unsafe{ world.get_resource_unchecked_mut::<W>().expect("Couldn't access world!") };
         let fetch_state = <Q::State as FetchState>::init(&mut world);
         let filter_state = <F::State as FetchState>::init(&mut world);
-        let outer_fetch_state = <Q::State as FetchState>::init(&mut world);
-        let outer_filter_state = <F::State as FetchState>::init(&mut world);
+
+        let outer_fetch_state = <Q::OtherState as FetchState>::init(&mut world);
+
         let mut component_access = Default::default();
         let mut outer_component_access = Default::default();
+
         fetch_state.update_component_access(&mut component_access);
         filter_state.update_component_access(&mut component_access);
+
         outer_fetch_state.update_component_access(&mut outer_component_access);
-        outer_filter_state.update_component_access(&mut outer_component_access);
+
         let mut state = Self {
             world_id: world.id(),
             archetype_generation: ArchetypeGeneration::new(usize::MAX),

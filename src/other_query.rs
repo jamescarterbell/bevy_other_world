@@ -1,3 +1,4 @@
+use crate::other::Otherable;
 use bevy::ecs::world::Mut;
 use bevy::ecs::system::QueryComponentError;
 use core::any::TypeId;
@@ -23,7 +24,7 @@ use std::clone::Clone;
 use crate::other_query_state::OtherQueryState;
 use crate::other_query_iter::OtherQueryIter;
 
-pub struct OtherQuery<'w, W, Q: WorldQuery, F: WorldQuery = ()>
+pub struct OtherQuery<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W> + 'static, F: WorldQuery + 'static = ()>
 where
     F::Fetch: FilterFetch,
 {
@@ -33,7 +34,7 @@ where
     pub(crate) change_tick: u32,
 }
 
-impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + 'static, F: WorldQuery + 'static> SystemParam for OtherQuery<'w, W, Q, F>
+impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W> + 'static, F: WorldQuery + 'static> SystemParam for OtherQuery<'w, W, Q, F>
 where
     F::Fetch: FilterFetch,{
 
@@ -41,7 +42,7 @@ where
 }
 
 
-impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery, F: WorldQuery> OtherQuery<'w, W, Q, F>
+impl<'w, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W>, F: WorldQuery> OtherQuery<'w, W, Q, F>
 where
     F::Fetch: FilterFetch,
 {

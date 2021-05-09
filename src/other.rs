@@ -14,17 +14,22 @@ pub struct Other<W: DerefMut<Target = World> + Component, T>{
 }
 
 pub trait Otherable<W: DerefMut<Target = World> + Component>{
-    type State: FetchState;
+    type OtherState: FetchState;
 }
 
-impl<W: DerefMut<Target = World> + Component, T: Component> Otherable<W> for Other<W, &T>{
-    type State = ReadState<Other<W, T>>;
+impl<W: DerefMut<Target = World> + Component, T: Component> Otherable<W> for &T{
+    type OtherState = ReadState<Other<W, T>>;
 }
 
-impl<W: DerefMut<Target = World> + Component, T: Component> Otherable<W> for Other<W, &mut T>{
-    type State = WriteState<Other<W, T>>;
+impl<W: DerefMut<Target = World> + Component, T: Component> Otherable<W> for &mut T{
+    type OtherState = WriteState<Other<W, T>>;
 }
 
-impl<W: DerefMut<Target = World> + Component> Otherable<W> for Other<W, ()>{
-    type State = ();
+impl<W: DerefMut<Target = World> + Component> Otherable<W> for (){
+    type OtherState = ();
+}
+
+
+impl<W: DerefMut<Target = World> + Component, T1: Component + Otherable<W>, T2: Component + Otherable<W>> Otherable<W> for (T1, T2){
+    type OtherState = (T1::OtherState, T2::OtherState);
 }

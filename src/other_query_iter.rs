@@ -1,3 +1,4 @@
+use crate::other::Otherable;
 use bevy::ecs::component::Component;
 use bevy::ecs::world::World;
 use core::ops::DerefMut;
@@ -12,7 +13,7 @@ use bevy::ecs::storage::TableId;
 
 use crate::other_query_state::OtherQueryState;
 
-pub struct OtherQueryIter<'w, 's, W, Q: WorldQuery, F: WorldQuery>
+pub struct OtherQueryIter<'w, 's, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W>, F: WorldQuery>
 where
     F::Fetch: FilterFetch,
 {
@@ -29,7 +30,7 @@ where
     current_index: usize,
 }
 
-impl<'w, 's, W: DerefMut<Target = World> + Component, Q: WorldQuery, F: WorldQuery> OtherQueryIter<'w, 's, W, Q, F>
+impl<'w, 's, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W>, F: WorldQuery> OtherQueryIter<'w, 's, W, Q, F>
 where
     F::Fetch: FilterFetch,
 {
@@ -67,7 +68,7 @@ where
     }
 }
 
-impl<'w, 's, W: DerefMut<Target = World> + Component, Q: WorldQuery, F: WorldQuery> Iterator for OtherQueryIter<'w, 's, W, Q, F>
+impl<'w, 's, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W>, F: WorldQuery> Iterator for OtherQueryIter<'w, 's, W, Q, F>
 where
     F::Fetch: FilterFetch,
 {
@@ -151,7 +152,7 @@ where
 // (2) each archetype pre-computes length
 // (3) there are no per-entity filters
 // TODO: add an ArchetypeOnlyFilter that enables us to implement this for filters like With<T>
-impl<'w, 's, W: DerefMut<Target = World> + Component, Q: WorldQuery> ExactSizeIterator for OtherQueryIter<'w, 's, W, Q, ()> {
+impl<'w, 's, W: DerefMut<Target = World> + Component, Q: WorldQuery + Otherable<W>> ExactSizeIterator for OtherQueryIter<'w, 's, W, Q, ()> {
     fn len(&self) -> usize {
         self.query_state
             .matched_archetypes
