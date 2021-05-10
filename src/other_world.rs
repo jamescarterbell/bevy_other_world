@@ -35,6 +35,7 @@ mod tests{
     use core::ops::DerefMut;
     use core::ops::Deref;
     use crate::other_query::OtherQuery;
+    use crate::other_res::OtherRes;
     use bevy::ecs::world::World;
     use bevy::winit::WinitConfig;
     use bevy::app::App;
@@ -48,7 +49,8 @@ mod tests{
             })
             .add_startup_system(test_startup.system())
             .add_system(other_query_test.system())
-            .add_system(normal_query_test.system());
+            .add_system(normal_query_test.system())
+            .add_system(crazy_query.system());
         let mut app = app.app;
         app.update();
     }
@@ -65,6 +67,8 @@ mod tests{
         world
             .spawn()
             .insert(20u32);
+        world
+            .insert_resource(String::from("Hello!"));
         commands.insert_resource(SubWorld{world});
         commands
             .spawn()
@@ -95,6 +99,20 @@ mod tests{
         for (u, i) in q.iter(){
             println!("{}, {}", u, i);
         }
+    }
+
+    fn crazy_query(Res<SubWorld>, thingy: OtherRes<SubWorld, String>, q: Query<(&u32, &i32)>, q2: OtherQuery<SubWorld, (&u32, &i32)>){
+        std::thread::sleep_ms(1000);
+        println!("Running system!");
+        for (u, i) in q.iter(){
+            println!("{}, {}", u, i);
+        }
+
+        for (u, i) in q2.iter(){
+            println!("{}, {}", u, i);
+        }
+
+        println!("{}", *thingy);
     }
 
     struct SubWorld{
