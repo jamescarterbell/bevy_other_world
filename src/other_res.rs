@@ -48,17 +48,16 @@ unsafe impl<W: DerefMut<Target = World> + Component, T: Component> SystemParamSt
 
     fn init(world: &mut World, system_state: &mut SystemState, _config: Self::Config) -> Self {
         let outer_component_id = world.initialize_resource::<Other<W, T>>();
-        let world_id = world.components_mut().get_or_insert_id::<W>();
+        let world_id = world.initialize_resource::<W>();
         let mut world = unsafe{ world.get_resource_unchecked_mut::<W>().expect("Couldn't find world!") };
         let component_id = world.initialize_resource::<T>();
         let combined_access = system_state.component_access_set.combined_access_mut();
-        if combined_access.has_write(component_id) {
+        if combined_access.has_write(outer_component_id) || combined_access.has_read(world_id) || combined_access.has_write(world_id){
             panic!(
-                "OtherRes<{}, {}> in system {} conflicts with a previous ResMut<{0}, {1}> access. Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                "Res<{}, {}> in system {} conflicts with a Res<{0}> or ResMut{0} access. Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
                 std::any::type_name::<W>(), std::any::type_name::<T>(), system_state.name);
         }
         combined_access.add_read(outer_component_id);
-        combined_access.add_write(world_id);
 
         Self {
             component_id,

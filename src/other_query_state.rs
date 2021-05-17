@@ -87,13 +87,20 @@ where
             &state.component_access,
             world,
         );
+
+        let world_id = world.initialize_resource::<W>();
+        
+        let combined_access = system_state.component_access_set.combined_access_mut();
+
+        if combined_access.has_read(world_id) || combined_access.has_write(world_id){
+            panic!(
+                "OtherQuery<{}, ...> in system {} conflicts with a Res<{0}> or ResMut<{0}> access. Allowing this would break Rust's mutability rules. Consider removing the duplicate access.",
+                std::any::type_name::<W>(), system_state.name);
+        }
+        
         system_state
             .component_access_set
             .add(state.outer_component_access.clone());
-
-        let world_id = world.components_mut().get_or_insert_id::<W>();
-        let combined_access = system_state.component_access_set.combined_access_mut();
-        combined_access.add_write(world_id);
 
         state
     }

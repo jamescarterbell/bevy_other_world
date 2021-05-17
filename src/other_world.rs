@@ -36,6 +36,7 @@ mod tests{
     use core::ops::Deref;
     use crate::other_query::OtherQuery;
     use crate::other_res::OtherRes;
+    use crate::other_res_mut::OtherResMut;
     use bevy::ecs::world::World;
     use bevy::winit::WinitConfig;
     use bevy::app::App;
@@ -52,6 +53,7 @@ mod tests{
             .add_system(normal_query_test.system())
             .add_system(crazy_query.system());
         let mut app = app.app;
+        app.update();
         app.update();
     }
 
@@ -94,6 +96,7 @@ mod tests{
     }
 
     fn normal_query_test(q: Query<(&u32, &i32)>){
+        //Used to make sure I can tell this is working
         std::thread::sleep_ms(100);
         println!("Running system!");
         for (u, i) in q.iter(){
@@ -101,7 +104,8 @@ mod tests{
         }
     }
 
-    fn crazy_query(Res<SubWorld>, thingy: OtherRes<SubWorld, String>, q: Query<(&u32, &i32)>, q2: OtherQuery<SubWorld, (&u32, &i32)>){
+    fn crazy_query(mut thingy: OtherResMut<SubWorld, String>, q: Query<(&u32, &i32)>, q2: OtherQuery<SubWorld, (&u32, &i32)>){
+        //Used to make sure I can tell this is working
         std::thread::sleep_ms(1000);
         println!("Running system!");
         for (u, i) in q.iter(){
@@ -113,6 +117,7 @@ mod tests{
         }
 
         println!("{}", *thingy);
+        thingy.make_ascii_uppercase();
     }
 
     struct SubWorld{

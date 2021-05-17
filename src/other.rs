@@ -9,6 +9,7 @@ use bevy::ecs::query::Fetch;
 use bevy::ecs::query::WorldQuery;
 use core::marker::PhantomData;
 
+
 pub struct Other<W: DerefMut<Target = World> + Component, T>{
     data: PhantomData<(T, W)>,
 }
